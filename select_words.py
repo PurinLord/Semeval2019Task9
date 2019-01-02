@@ -29,8 +29,10 @@ from nltk.util import ngrams
 from keras.models import Model
 from keras.layers import Dense, Input, Dropout
 from keras.callbacks import EarlyStopping
+from keras import regularizers
 
 from losses import focal
+from w2v import sent_vectors
 
 
 keywords = ["suggest", "recommend", "hopefully", "go for", "request", "it would be nice", "adding", "should come with", "should be able", "could come with",  "i need" ,  "we need", "needs",  "would like to", "would love to", "allow", "add"]
@@ -129,32 +131,55 @@ def make_model(x_train):
     in_shape = (len(x_train[0]), )
     m_input = Input(shape=in_shape)
     m = Dropout(0.0)(m_input)
-    m = Dense(80, activation='relu')(m)
-    m = Dropout(0.75)(m)
-    m = Dense(50, activation='relu')(m)
+    m = Dense(
+            80, activation='relu',
+            kernel_regularizer=regularizers.l2(0.01),
+            activity_regularizer=regularizers.l1(0.01))(m)
+    m = Dropout(0.50)(m)
+    m = Dense(
+            50, activation='relu',
+            kernel_regularizer=regularizers.l2(0.01),
+            activity_regularizer=regularizers.l1(0.01))(m)
     m = Dropout(0.2)(m)
-    m = Dense(2, activation='softmax')(m)
+    m = Dense(
+            2, activation='softmax')(m)
     model = Model(inputs=m_input, outputs=m)
     loss = focal()
     model.compile(optimizer='rmsprop', loss=loss, metrics=['acc', f1])
     return model
 
 
-def train_eval(model, X, Y):
-    x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.33, random_state=42)
+def train_eval(model, X, Y, final=0):
+    if not final:
+        X, x_test, Y, y_test = train_test_split(
+                X, Y, test_size=0.33, random_state=402,
+                stratify=Y)
+        x_test, x_valid, y_test, y_valid = train_test_split(
+                x_test, y_test, test_size=0.5, random_state=109,
+                stratify=y_test)
 
-    enc = OneHotEncoder()
-    enc.fit(y_train)
+        enc = OneHotEncoder()
+        enc.fit(Y)
 
-    model.fit(x_train, enc.transform(y_train),
-            validation_split=0.2,
-            epochs=10,
-            callbacks=[EarlyStopping(patience=4)])
+        model.fit(
+                X, enc.transform(Y),
+                validation_data=(x_valid, enc.transform(y_valid)),
+                epochs=20,
+                callbacks=[EarlyStopping(patience=3)])
 
-    final_pred = model.predict(x_test)
-    no_one_hot = enc.inverse_transform(final_pred).reshape(len(final_pred))
+        final_pred = model.predict(x_test)
+        no_one_hot = enc.inverse_transform(final_pred).reshape(len(final_pred))
 
-    print('Final ', f1_score(no_one_hot, y_test))
+        print('Final ', f1_score(no_one_hot, y_test))
+
+    else:
+        enc = OneHotEncoder()
+        enc.fit(Y)
+
+        model.fit(
+                X, enc.transform(Y),
+                epochs=final,
+                callbacks=[EarlyStopping(patience=3)])
 
     return enc
 
@@ -165,21 +190,23 @@ if __name__ == '__main__':
 
     X = o['x']
     Y = o['y']
+    Y_in = np.array(Y).reshape(len(Y), 1)
 
-    bigram = CountVectorizer(ngram_range=(1,3))
-    X_in = bigram.fit_transform(X)
-    #X_in = make_input(X)
-    #tfidf_vect = TfidfVectorizer()
-    #X_in = tfidf_vect.fit_transform(X)
+    #bigram = CountVectorizer(ngram_range=(1,3))
+    #X_in = bigram.fit_transform(X)
+    caract = make_input(X)
+    tfidf_vect = TfidfVectorizer()
+    tf = tfidf_vect.fit_transform(X).toarray()
+    w2v = sent_vectors(X)
+    X_in = np.hstack((caract, tf, w2v))
 
-    x_train, x_test, y_train, y_test = train_test_split(X_in, Y, test_size=0.33, random_state=420)
-
+    #x_train, x_test, y_train, y_test = train_test_split(
+    #        X_in, Y, test_size=0.33, random_state=42,
+    #        stratify=Y)
     #x_train = np.array(x_train)
     #x_test = np.array(x_test)
-    x_train = x_train.toarray()
-    x_test = x_test.toarray()
-    y_train = np.array(y_train).reshape(len(y_train), 1)
-    y_test = np.array(y_test).reshape(len(y_test), 1)
+    #x_train = x_train.toarray()
+    #x_test = x_test.toarray()
 
     #svm = SVC(probability=True)
     #svm.fit(x_train, y_train)
@@ -200,7 +227,6 @@ if __name__ == '__main__':
     #dtc_pred = dtc.predict(x_test)
     #print('DTC', f1_score(y_test, dtc_pred))
 
-    model = make_model(x_train)
-    Y_in = np.array(Y).reshape(len(Y), 1)
+    model = make_model(X_in)
     enc = train_eval(model, X_in, Y_in)
 
