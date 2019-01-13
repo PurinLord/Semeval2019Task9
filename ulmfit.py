@@ -1,3 +1,4 @@
+import numpy as np
 import pandas
 from sklearn.model_selection import train_test_split
 from fastai.text import * 
@@ -7,21 +8,20 @@ path = 'lm_data'
 o = pandas.read_csv(
         './Subtask-A/Training_Full_V1.3 .csv',
         names=['id', 'text', 'label'],
-        encoding="ISO-8859-1")
+        encoding="ISO-8859-1",
+        dtype=np.str)
+
+d = o.drop('id', axis=1)
+df = pandas.DataFrame({'label': d['label'], 'text': d['text']})
 
 x_train, x_test = train_test_split(
-        o,
+        df,
         test_size=0.20,
         random_state=42,
-        stratify=o['label'])
+        stratify=d['label'])
 
 data_lm = TextLMDataBunch.from_df(path, x_train, x_test)
-data_clas = TextClasDataBunch.from_df(
-        '.',
-        x_train,
-        x_tes,
-        vocab=data_lm.train_ds.vocab,
-        bs=32)
+data_clas = TextClasDataBunch.from_df( path, x_train, x_test, vocab=data_lm.train_ds.vocab, bs=32)
 
 #data_lm.save()
 #data_clas.save()
