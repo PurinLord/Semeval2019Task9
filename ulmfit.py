@@ -11,23 +11,27 @@ o = pandas.read_csv(
         encoding="ISO-8859-1",
         dtype=np.str)
 
-d = o.drop('id', axis=1)
-df = pandas.DataFrame({'label': d['label'], 'text': d['text']})
+oo = pandas.read_csv(
+        './Subtask-A/SubtaskA_Trial_Test_Labeled.csv',
+        names=['id', 'text', 'label'], encoding="ISO-8859-1")
 
-x_train, x_test = train_test_split(
-        df,
-        test_size=0.20,
-        random_state=42,
-        stratify=d['label'])
+x_train = pandas.DataFrame({'label': o['label'], 'text': o['text']})
+x_test = pandas.DataFrame({'label': oo['label'], 'text': oo['text']})
+
+#x_train, x_test = train_test_split(
+#        df,
+#        test_size=0.20,
+#        random_state=42,
+#        stratify=d['label'])
 
 data_lm = TextLMDataBunch.from_df(path, x_train, x_test)
 data_clas = TextClasDataBunch.from_df( path, x_train, x_test, vocab=data_lm.train_ds.vocab, bs=32)
 
-#data_lm.save()
-#data_clas.save()
-#
-#data_lm = TextLMDataBunch.load(path)
-#data_clas = TextClasDataBunch.load(path, bs=32)
+data_lm.save()
+data_clas.save()
+
+data_lm = TextLMDataBunch.load(path)
+data_clas = TextClasDataBunch.load(path, bs=32)
 
 learn = language_model_learner(data_lm, pretrained_model=URLs.WT103, drop_mult=0.5)
 learn.fit_one_cycle(1, 1e-2)
@@ -37,7 +41,7 @@ learn.fit_one_cycle(1, 1e-3)
 
 learn.predict("I like the", n_words=10)
 
-#learn.save_encoder('ft_enc')
+learn.save_encoder('ft_enc')
 
 learn = text_classifier_learner(data_clas, drop_mult=0.5)
 learn.load_encoder('ft_enc')
@@ -53,4 +57,6 @@ learn.unfreeze()
 learn.fit_one_cycle(1, slice(2e-3/100, 2e-3))
 
 learn.predict("My screen does not load")
+
+learn.save('clas')
 
