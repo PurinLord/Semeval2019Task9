@@ -33,7 +33,19 @@ data_clas.save()
 data_lm = TextLMDataBunch.load(path)
 data_clas = TextClasDataBunch.load(path, bs=32)
 
-learn = language_model_learner(data_lm, pretrained_model=URLs.WT103, drop_mult=0.5)
+learn = language_model_learner(
+        data_lm, pretrained_model=URLs.WT103,
+        drop_mult=0.5,
+        bptt=70,
+        emb_sz=400,
+        nh=1150,
+        nl=3,
+        pad_token=1,
+        tie_weights=True,
+        bias=True,
+        qrnn=False,
+        pretrained_fnames=None)
+
 learn.fit_one_cycle(1, 1e-2)
 
 learn.unfreeze()
@@ -43,7 +55,20 @@ learn.predict("I like the", n_words=10)
 
 learn.save_encoder('ft_enc')
 
-learn = text_classifier_learner(data_clas, drop_mult=0.5)
+learn = text_classifier_learner(
+        data_clas,
+        drop_mult=0.5,
+        data=70,
+        emb_sz=400,
+        nh=1150,
+        nl=3,
+        pad_token=1,
+        qrnn=False,
+        max_len=1400,
+        lin_ftrs=None,
+        ps=None,
+        pretrained_model=None)
+
 learn.load_encoder('ft_enc')
 
 data_clas.show_batch()
