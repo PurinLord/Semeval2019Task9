@@ -2,7 +2,7 @@ import numpy as np
 import itertools
 from tqdm import tqdm
 import pandas
-import spacy
+#import spacy
 from scipy import sparse
 
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -15,7 +15,7 @@ from sklearn.tree import DecisionTreeClassifier
 # Suport Vector Machine
 from sklearn.svm import SVC
 
-from sklearn.metrics import accuracy_score 
+from sklearn.metrics import f1_score 
 from sklearn.model_selection import train_test_split
 #from sklearn.model_selection import cross_val_score
 
@@ -94,28 +94,32 @@ def train_meta_model(data, models, dropout=0.3):
         if p > 0.5:
             one_hot[i] = 1
     
-    print('Final ', accuracy_score(one_hot, y_test))
+    print('Final ', f1_score(one_hot, y_test))
     
     return model, final_pred
 
 min_len = 500
 max_len = 10000
 
-o = pandas.read_csv('./Subtask-A/Training_Full_V1.3.csv', names=['id','x','y'], encoding = "ISO-8859-1")
-#oo = pandas.read_csv('./Subtask-A/TrialData_SubtaskA_Test.csv', names=['id','x','y'], encoding = "ISO-8859-1")
+o = pandas.read_csv('./Subtask-A/Training_Full_V1.3 _predictions.csv', names=['id','x','y'], encoding = "ISO-8859-1")
+oo = pandas.read_csv('./Subtask-A/SubtaskA_Trial_Test_Labeled.csv', names=['id','x','y'], encoding = "ISO-8859-1")
 
 X = o['x']
 Y = o['y']
 
 #bigrams = word_ngram(X, 2) 
 
-x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.33, random_state=420)
+#x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=0.33, random_state=420)
 #x_train, y_train = X, Y
 #x_test = oo['x']
 #y_test = [0]*len(x_test)
 
 #b_train, b_test = train_test_split(bigrams, test_size=0.33, random_state=42)
 
+x_train = o['x'][1:]
+y_train = o['y'][1:].astype(int)
+x_test = oo['x'][1:]
+y_test = oo['y'][1:].astype(int)
 
 tfidf_vect = TfidfVectorizer()
 tfidf_vect.fit(x_train)
@@ -126,26 +130,26 @@ xt = tfidf_vect.transform(x_test)
 svm = SVC(C=10000, probability=True)
 svm.fit(x, y_train)
 svm_pred = svm.predict(xt)
-print('SVM ', accuracy_score(y_test, svm_pred))
+print('SVM ', f1_score(y_test, svm_pred))
 
 # Gauss
 gnv = GaussianNB()
 gnv.fit(x.toarray(), y_train)
 g_pred = gnv.predict(xt.toarray())
-print('GNB ', accuracy_score(y_test, g_pred))
+print('GNB ', f1_score(y_test, g_pred))
 
 # Random F
 rfc = RandomForestClassifier(n_estimators=100, max_depth=2, random_state=0)
 rfc.fit(x, y_train)
 #print(rfc.feature_importances_)
 rfc_pred = rfc.predict(xt)
-print('RFC ', accuracy_score(y_test, rfc_pred))
+print('RFC ', f1_score(y_test, rfc_pred))
 
 # DTC
 dtc = DecisionTreeClassifier(random_state=0)
 dtc.fit(x, y_train)
 dtc_pred = dtc.predict(xt)
-print('DTC', accuracy_score(y_test, dtc_pred))
+print('DTC', f1_score(y_test, dtc_pred))
 
 # Logistic REgretion
 
