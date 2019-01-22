@@ -6,17 +6,19 @@ from fastai.text import *
 path = 'lm_data'
 
 o = pandas.read_csv(
-        './Subtask-A/Training_Full_V1.3 .csv',
+        './Subtask-A/V1.4_Training.csv',
         names=['id', 'text', 'label'],
         encoding="ISO-8859-1",
         dtype=np.str)
 
 oo = pandas.read_csv(
         './Subtask-A/SubtaskA_Trial_Test_Labeled.csv',
-        names=['id', 'text', 'label'], encoding="ISO-8859-1")
+        names=['id', 'text', 'label'],
+        encoding="ISO-8859-1",
+        dtype=np.str)
 
-x_train = pandas.DataFrame({'label': o['label'], 'text': o['text']})
-x_test = pandas.DataFrame({'label': oo['label'], 'text': oo['text']})
+x_train = pandas.DataFrame({'label': o['label'][1:], 'text': o['text'][1:]})
+x_test = pandas.DataFrame({'label': oo['label'][1:], 'text': oo['text'][1:]})
 
 #x_train, x_test = train_test_split(
 #        df,
@@ -58,7 +60,7 @@ learn.save_encoder('ft_enc')
 learn = text_classifier_learner(
         data_clas,
         drop_mult=0.5,
-        data=70,
+        bptt=70,
         emb_sz=400,
         nh=1150,
         nl=3,
@@ -66,8 +68,7 @@ learn = text_classifier_learner(
         qrnn=False,
         max_len=1400,
         lin_ftrs=None,
-        ps=None,
-        pretrained_model=None)
+        ps=None)
 
 learn.load_encoder('ft_enc')
 
